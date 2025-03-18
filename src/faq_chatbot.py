@@ -3,6 +3,7 @@ import os
 import json 
 import openai 
 import gradio as gr 
+from datetime import datetime
 
 # 取得 OpenAI API key
 load_dotenv()
@@ -29,6 +30,31 @@ desc = ("電商客服機器人：可回答有關電商服務和政策的常見�
         "使用說明：\n"
         "1. 輸入您的問題或查詢。\n"
         "2. 點擊提交後，機器人將根據 FAQ 提供回答。\n")
+
+# 定義聊天記錄存儲函數
+def save_chat_log(user_input, bot_response):
+    log_entry = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "user": user_input,
+        "bot": bot_response
+    }
+    log_dir = "src/data"
+    log_file = os.path.join(log_dir, "chat_log.json")
+    
+    os.makedirs(log_dir, exist_ok=True)
+    
+    if os.path.exists(log_file):
+        with open(log_file, 'r+', encoding='utf-8') as f:
+            try:
+                logs = json.load(f)
+            except json.JSONDecodeError:
+                logs = []
+            logs.append(log_entry)
+            f.seek(0)
+            json.dump(logs, f, ensure_ascii=False, indent=4)
+    else:
+        with open(log_file, 'w', encoding='utf-8') as f:
+            json.dump([log_entry], f, ensure_ascii=False, indent=4)
 
 # 定義主要的客服機器人函數
 def store_faq_bot(message, history):
@@ -72,6 +98,9 @@ def store_faq_bot(message, history):
             chunk_text = chunk.choices[0].delta.content
             collected_messages += chunk_text
             yield collected_messages
+    
+    # 存儲對話紀錄
+    save_chat_log(message, collected_messages)
 
 # 關閉所有 Gradio 應用
 gr.close_all()
